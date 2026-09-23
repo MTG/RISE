@@ -1,10 +1,71 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "svara-representation"
-version = "0.1.0"
+name = "rise"
+version = "0.2.0"
+description = "A rāga-independent encoder for svara representation in Carnatic music"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "Vivek Vijayan" },
+    { name = "Thomas Nuttall" },
+    { name = "Xavier Serra" },
+]
+keywords = [
+    "Carnatic music",
+    "svara representation",
+    "representation learning",
+    "self-supervised learning",
+    "pitch contour",
+    "contrastive learning",
+    "music information retrieval",
+]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Sound/Audio :: Analysis",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 
-[tool.setuptools]
-package-dir = {"" = "src"}
+dependencies = [
+    "info-nce-pytorch>=0.1.4",
+    "librosa>=0.10",
+    "matplotlib>=3.8",
+    "numpy>=1.26",
+    "pandas>=2.0",
+    "peft>=0.14",
+    "PyYAML>=6.0",
+    "rich>=13.0",
+    "scikit-learn>=1.5",
+    "scipy>=1.11",
+    "torch>=2.0",
+    "torchmetrics>=1.6",
+    "tsaug>=0.2",
+    "umap-learn>=0.5",
+    "yt-dlp>=2024.1",
+]
+
+[project.urls]
+Repository = "https://github.com/MTG/RISE"
+Paper = "https://doi.org/10.1145/3815723.3815730"
+
+[project.scripts]
+rise = "rise.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["rise"]

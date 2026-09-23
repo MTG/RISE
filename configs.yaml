@@ -1,0 +1,57 @@
+preprocess:
+  smoothing_factor: 0.5
+  interpolation_gap: 0.02
+
+pretrain:
+  batch_size: 256
+  depth: 5
+  embed_dim: 48
+  out_dim: 16
+  epochs: 1000
+  lr: 1.0e-5
+  patience: 20
+
+classification:
+  batch_size: 256
+  depth: 5
+  embed_dim: 48
+  epochs: 200
+  lr: 1.0e-3
+  weight_decay: 1.0e-3
+  head_warmup_epochs: 10
+  patience: 30
+  lora_rank: 8
+  lora_alpha: 16
+  lora_dropout: 0.05
+
+clustering:
+  batch_size: 256
+  depth: 5
+  embed_dim: 48
+  epochs: 200
+  lr: 1.0e-3
+  weight_decay: 1.0e-3
+  head_warmup_epochs: 10
+  patience: 30
+  lora_rank: 4
+  lora_alpha: 16
+  lora_dropout: 0.0
+
+pattern_recognition:
+  depth: 5
+  embed_dim: 48
+  window_size: 200
+  batch_size: 256
+
+synthesis:
+  batch_size: 64
+  embed_batch_size: 256
+  depth: 5
+  embed_dim: 48
+  epochs: 200
+  lr: 1.0e-6
+  patience: 10
+
+figures:
+  smoothing_factor: 0.5
+  interpolation_gap: 0.02

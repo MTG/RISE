@@ -1,8 +1,0 @@
-params:
-  batch_size: 512
-  catchup: 10
-  depth: 5
-  early_stopping: 30
-  embed_dim: 48
-  epochs: 200
-  lr: 1e-3
