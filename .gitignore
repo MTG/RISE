@@ -1,9 +1,5 @@
 .cache/
-results/
-figures/
 runs/
-mlruns/
-mlflow.db
 
 *.pth
 !checkpoints/encoder.pth
