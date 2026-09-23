@@ -46,7 +46,11 @@ class TrainingState:
     def load(cls, path: Path) -> TrainingState:
         if not path.exists():
             return cls()
-        stored = torch.load(path, map_location="cpu", weights_only=False)
+        try:
+            stored = torch.load(path, map_location="cpu", weights_only=False)
+        except (RuntimeError, EOFError, OSError):
+            warn(f"Ignoring a corrupt resume record at {path}")
+            return cls()
         known = {field.name for field in fields(cls)}
         return cls(**{key: value for key, value in stored.items() if key in known})
 
@@ -66,7 +70,9 @@ class TrainingState:
 
     def save(self, path: Path) -> None:
         ensure_dir(path.parent)
-        torch.save(vars(self), path)
+        staged = path.with_suffix(".tmp")
+        torch.save(vars(self), staged)
+        staged.replace(path)
 
 
 def run_dir(tag: str) -> Path:
@@ -213,8 +219,6 @@ def train_classifier(
                 else:
                     state.epochs_without_improvement += 1
 
-                # The state is written before the early-stopping check so that a run
-                # that stopped is not silently restarted by a later resume.
                 state.epoch = epoch + 1
                 state.stopped = state.epochs_without_improvement >= patience
                 state.forget_weights()
@@ -224,8 +228,6 @@ def train_classifier(
                     detail(f"Early stopping after {patience} epochs without improvement")
                     break
     except KeyboardInterrupt:
-        # Resumption is exact to the last epoch that finished; the batches already
-        # seen in the epoch under way when the interrupt arrived are replayed.
         state.capture(model, optimiser)
         state.save(resume_path(run_tag))
         detail(f"Saved the training state of {run_tag} at epoch {state.epoch}")

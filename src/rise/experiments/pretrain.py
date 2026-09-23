@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 
-import mlflow
 import numpy as np
 import torch
 from info_nce import InfoNCE
@@ -38,7 +37,6 @@ MIN_LEARNING_RATE = 1e-6
 #: Improvement below which a step counts as a plateau.
 PLATEAU_THRESHOLD = 1e-6
 
-
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--batch-size", type=int, default=256, help="negatives per anchor, plus one")
     parser.add_argument("--depth", type=int, default=5, help="number of Inception blocks")
@@ -48,25 +46,19 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--lr", type=float, default=1e-5)
     parser.add_argument("--patience", type=int, default=20, help="plateau epochs before the LR is cut")
 
-
 def run(args: argparse.Namespace) -> None:
     rule("Contrastive pretraining")
     parameters_table(experiment_parameters(args))
     device = resolve_device(args.device)
 
-    with mlflow.start_run(run_name="pretrain"):
-        mlflow.log_params(experiment_parameters(args))
+    split = load_split(dataset_dir("pretrain"), "train")
+    loader = DataLoader(ContourDataset(split["contours"]), batch_size=args.batch_size, shuffle=True)
+    detail(f"{len(loader.dataset)} plausible svaras, {len(loader)} steps per epoch")
 
-        split = load_split(dataset_dir("pretrain"), "train")
-        loader = DataLoader(ContourDataset(split["contours"]), batch_size=args.batch_size, shuffle=True)
-        detail(f"{len(loader.dataset)} plausible svaras, {len(loader)} steps per epoch")
+    model = ContrastiveModel(args.embed_dim, args.depth, args.out_dim).to(device)
+    best_loss = train(model, loader, epochs=args.epochs, learning_rate=args.lr, patience=args.patience)
 
-        model = ContrastiveModel(args.embed_dim, args.depth, args.out_dim).to(device)
-        best_loss = train(model, loader, epochs=args.epochs, learning_rate=args.lr, patience=args.patience)
-
-        mlflow.log_metric("best_infonce_loss", best_loss)
-        console.print(f"Best InfoNCE loss: [metric]{best_loss:.6f}[/metric]")
-
+    console.print(f"Best InfoNCE loss: [metric]{best_loss:.6f}[/metric]")
 
 def train(
     model: ContrastiveModel,
@@ -116,7 +108,6 @@ def train(
                 ensure_dir(ENCODER_CHECKPOINT.parent)
                 torch.save(model.encoder.state_dict(), ENCODER_CHECKPOINT)
 
-            mlflow.log_metric("infonce_loss", epoch_loss, step=epoch)
             bar.update(epoch_task, advance=1, description=f"Epoch {epoch + 1}/{epochs} · loss {epoch_loss:.6f}")
             bar.update(step_task, visible=False)
 

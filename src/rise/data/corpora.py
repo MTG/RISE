@@ -24,10 +24,6 @@ import yaml
 
 from ..paths import DATA_DIR
 
-# --------------------------------------------------------------------------- #
-# Carnatic vocabulary
-# --------------------------------------------------------------------------- #
-
 #: The seven *svaras* in *sargam* notation, in ascending order of the *ārōhaṇa*:
 #: sa, ri, ga, ma, pa, dha, ni. Analogous to Western solfège.
 SVARAS: tuple[str, ...] = ("S", "R", "G", "M", "P", "D", "N")
@@ -66,19 +62,12 @@ RAGA_DISPLAY_NAMES: dict[str, str] = {
 #: performed *svara* oscillates around its position rather than sitting on it, which
 #: is precisely what makes the contour, and not the position, the object of study.
 RAGA_SVARASTHANA_CENTS: dict[str, dict[str, int]] = {
-    # janya of Kharaharapriya; auḍava (pentatonic)
     "abhogi": {"S": 0, "R2": 200, "G2": 300, "M1": 500, "D2": 900},
-    # janya of Dhīraśaṅkarābharaṇam
     "begada": {"S": 0, "R2": 200, "G3": 400, "M1": 500, "P": 700, "D2": 900, "N3": 1100},
-    # Mēchakalyāṇi, the 65th melakarta
     "kalyani": {"S": 0, "R2": 200, "G3": 400, "M2": 600, "P": 700, "D2": 900, "N3": 1100},
-    # janya of Harikāmbhōji; auḍava (pentatonic)
     "mohanam": {"S": 0, "R2": 200, "G3": 400, "P": 700, "D2": 900},
-    # janya of Harikāmbhōji
     "sahana": {"S": 0, "R2": 200, "G3": 400, "M1": 500, "P": 700, "D2": 900, "N2": 1000},
-    # janya of Māyāmāḷavagauḷa
     "saveri": {"S": 0, "R1": 100, "G3": 400, "M1": 500, "P": 700, "D1": 800, "N3": 1100},
-    # janya of Kharaharapriya
     "sri": {"S": 0, "R2": 200, "G2": 300, "M1": 500, "P": 700, "D2": 900, "N2": 1000},
 }
 
@@ -93,9 +82,6 @@ SVARA_DISPLAY_NAMES: dict[str, str] = {
     "N": "Ni",
 }
 
-# --------------------------------------------------------------------------- #
-# Corpus layout
-# --------------------------------------------------------------------------- #
 
 
 @dataclass(frozen=True)
@@ -137,9 +123,6 @@ VARNAM = Corpus("Varnam")
 IAMMS = Corpus("IAMMS")
 
 
-# --------------------------------------------------------------------------- #
-# Readers
-# --------------------------------------------------------------------------- #
 
 
 def read_pitch_track(path: Path) -> tuple[np.ndarray, np.ndarray]:

@@ -11,7 +11,6 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 
-import mlflow
 import numpy as np
 import pandas as pd
 import torch
@@ -40,7 +39,6 @@ RESULTS_FILE = "classification_f1.tsv"
 #: the label used in tables and figures. Order is the order they are reported in.
 CONDITIONS = {"scratch": "Fully supervised", "pretrained": "Semi-supervised"}
 
-
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--depth", type=int, default=5)
@@ -60,35 +58,29 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--lora-dropout", type=float, default=DEFAULT_DROPOUT)
     parser.add_argument("--ragas", nargs="+", default=list(RAGAS), choices=list(RAGAS))
 
-
 def run(args: argparse.Namespace) -> None:
     rule("Svara classification")
     parameters_table(experiment_parameters(args))
     device = resolve_device(args.device)
     scores: dict[str, dict[str, float]] = {}
 
-    with mlflow.start_run(run_name="classification"):
-        mlflow.log_params(experiment_parameters(args))
+    for raga in args.ragas:
+        banner(RAGA_DISPLAY_NAMES[raga])
+        loaders = build_loaders(raga, args.batch_size)
+        labels = [SVARA_DISPLAY_NAMES[svara] for svara in RAGA_SVARAS[raga]]
 
-        for raga in args.ragas:
-            banner(RAGA_DISPLAY_NAMES[raga])
-            loaders = build_loaders(raga, args.batch_size)
-            labels = [SVARA_DISPLAY_NAMES[svara] for svara in RAGA_SVARAS[raga]]
+        outcomes = {
+            tag: evaluate_condition(raga, loaders, args, device, tag=tag) for tag in CONDITIONS
+        }
 
-            outcomes = {
-                tag: evaluate_condition(raga, loaders, args, device, tag=tag) for tag in CONDITIONS
-            }
+        scores[raga] = {tag: outcome.f1 for tag, outcome in outcomes.items()}
+        gain = outcomes["pretrained"].f1 - outcomes["scratch"].f1
+        detail(f"F1 {outcomes['scratch'].f1:.4f} → {outcomes['pretrained'].f1:.4f} ({gain:+.4f})")
 
-            scores[raga] = {tag: outcome.f1 for tag, outcome in outcomes.items()}
-            gain = outcomes["pretrained"].f1 - outcomes["scratch"].f1
-            detail(f"F1 {outcomes['scratch'].f1:.4f} → {outcomes['pretrained'].f1:.4f} ({gain:+.4f})")
-            mlflow.log_metrics({f"f1_{raga}_{tag}": outcome.f1 for tag, outcome in outcomes.items()})
+        for tag, outcome in outcomes.items():
+            save_figure(plot_confusion_matrix(outcome.confusion, labels), f"confusion_{raga}_{tag}")
 
-            for tag, outcome in outcomes.items():
-                save_figure(plot_confusion_matrix(outcome.confusion, labels), f"confusion_{raga}_{tag}")
-
-        report(scores)
-
+    report(scores)
 
 @dataclass(frozen=True)
 class Outcome:
@@ -96,7 +88,6 @@ class Outcome:
 
     f1: float
     confusion: np.ndarray
-
 
 def build_loaders(raga: str, batch_size: int) -> dict[str, DataLoader]:
     """Load the fixed splits of one *rāga* as data loaders."""
@@ -110,7 +101,6 @@ def build_loaders(raga: str, batch_size: int) -> dict[str, DataLoader]:
         )
         for name in ("train", "val", "test")
     }
-
 
 def evaluate_condition(
     raga: str,
@@ -138,8 +128,6 @@ def evaluate_condition(
         learning_rate=args.lr,
         weight_decay=args.weight_decay,
         patience=args.patience,
-        # Without a pretrained encoder there is nothing to protect, so the encoders
-        # train from the first epoch.
         head_warmup_epochs=args.head_warmup_epochs if pretrained else 0,
         run_tag=run_tag,
     )
@@ -150,7 +138,6 @@ def evaluate_condition(
         f1=float(f1_score(true, predicted, average="macro")),
         confusion=confusion_matrix(true, predicted, labels=range(num_classes)),
     )
-
 
 def report(scores: dict[str, dict[str, float]]) -> None:
     """Write the score table and the figure that accompanies it."""

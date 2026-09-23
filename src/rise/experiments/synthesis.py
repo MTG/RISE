@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import argparse
 
-import mlflow
 import numpy as np
 import pandas as pd
 import torch
@@ -51,44 +50,38 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
         help="fit the decoder even when a checkpoint already exists",
     )
 
-
 def run(args: argparse.Namespace) -> None:
     rule("Svara synthesis")
     parameters_table(experiment_parameters(args))
     device = resolve_device(args.device)
 
-    with mlflow.start_run(run_name="synthesis"):
-        mlflow.log_params(experiment_parameters(args))
+    encoder = InceptionEncoder(args.embed_dim, args.depth).to(device)
+    encoder.load_state_dict(torch.load(ENCODER_CHECKPOINT, map_location=device))
+    encoder.eval()
+    for parameter in encoder.parameters():
+        parameter.requires_grad = False
 
-        encoder = InceptionEncoder(args.embed_dim, args.depth).to(device)
-        encoder.load_state_dict(torch.load(ENCODER_CHECKPOINT, map_location=device))
-        encoder.eval()
-        for parameter in encoder.parameters():
-            parameter.requires_grad = False
+    data = torch.load(dataset_dir("synthesis") / "data.pt", weights_only=False)
+    detail(f"{len(data['train'])} CMR segments for fitting, {len(data['test'])} Varnam svaras for testing")
 
-        data = torch.load(dataset_dir("synthesis") / "data.pt", weights_only=False)
-        detail(f"{len(data['train'])} CMR segments for fitting, {len(data['test'])} Varnam svaras for testing")
+    decoder = InceptionDecoder(args.embed_dim, args.depth).to(device)
+    if DECODER_CHECKPOINT.exists() and not args.retrain:
+        decoder.load_state_dict(torch.load(DECODER_CHECKPOINT, map_location=device))
+        detail(f"Using the decoder checkpoint at {DECODER_CHECKPOINT}")
+    else:
+        loader = build_loader(encoder, data["train"], args.embed_batch_size, args.batch_size, device)
+        loss = train(decoder, loader, epochs=args.epochs, learning_rate=args.lr, patience=args.patience)
+        detail(f"Best reconstruction MSE {loss:.8f}")
 
-        decoder = InceptionDecoder(args.embed_dim, args.depth).to(device)
-        if DECODER_CHECKPOINT.exists() and not args.retrain:
-            decoder.load_state_dict(torch.load(DECODER_CHECKPOINT, map_location=device))
-            detail(f"Using the decoder checkpoint at {DECODER_CHECKPOINT}")
-        else:
-            loader = build_loader(encoder, data["train"], args.embed_batch_size, args.batch_size, device)
-            loss = train(decoder, loader, epochs=args.epochs, learning_rate=args.lr, patience=args.patience)
-            detail(f"Best reconstruction MSE {loss:.8f}")
-
-        loader = build_loader(encoder, data["test"], args.embed_batch_size, args.batch_size, device)
-        reconstructions = reconstruct(decoder, loader, data["test"].shape[1])
-        evaluate(data["test"], reconstructions)
-
+    loader = build_loader(encoder, data["test"], args.embed_batch_size, args.batch_size, device)
+    reconstructions = reconstruct(decoder, loader, data["test"].shape[1])
+    evaluate(data["test"], reconstructions)
 
 @torch.no_grad()
 def embed(encoder: InceptionEncoder, contours: torch.Tensor, batch_size: int, device: torch.device) -> torch.Tensor:
     """Encode every contour, keeping the time axis for the decoder to expand."""
     loader = DataLoader(ContourDataset(contours), batch_size=batch_size, shuffle=False)
     return torch.cat([encoder(append_silence_mask(batch.to(device))).cpu() for batch in loader])
-
 
 def build_loader(
     encoder: InceptionEncoder,
@@ -103,7 +96,6 @@ def build_loader(
     voicing = (~torch.isnan(targets)).float()
     targets = torch.cat([torch.nan_to_num(targets, nan=0.0), voicing], dim=1)
     return DataLoader(TensorDataset(embeddings, targets), batch_size=batch_size)
-
 
 def train(
     decoder: InceptionDecoder,
@@ -149,12 +141,10 @@ def train(
                 ensure_dir(DECODER_CHECKPOINT.parent)
                 torch.save(decoder.state_dict(), DECODER_CHECKPOINT)
 
-            mlflow.log_metric("reconstruction_mse", epoch_loss, step=epoch)
             bar.update(epoch_task, advance=1, description=f"Epoch {epoch + 1}/{epochs} · MSE {epoch_loss:.8f}")
             bar.update(step_task, visible=False)
 
     return float(best_loss)
-
 
 @torch.no_grad()
 def reconstruct(decoder: InceptionDecoder, loader: DataLoader, num_frames: int) -> np.ndarray:
@@ -162,7 +152,6 @@ def reconstruct(decoder: InceptionDecoder, loader: DataLoader, num_frames: int) 
     device = next(decoder.parameters()).device
     decoder.eval()
     return np.concatenate([decoder(embeddings.to(device), num_frames).cpu().numpy() for embeddings, *_ in loader])
-
 
 def evaluate(reference: torch.Tensor, reconstructions: np.ndarray) -> None:
     """Score every reconstruction and write the metric table."""
@@ -186,7 +175,6 @@ def evaluate(reference: torch.Tensor, reconstructions: np.ndarray) -> None:
             bar.advance(task)
 
     means = scores.means()
-    mlflow.log_metrics(means)
     ensure_dir(RESULTS_DIR)
     pd.DataFrame([means]).to_csv(RESULTS_DIR / RESULTS_FILE, sep="\t", index=False)
 

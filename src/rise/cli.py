@@ -80,8 +80,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     seed_everything(args.seed)
     apply_style()
 
-    # Resolved here rather than in each experiment so that the device the run
-    # actually used is what the parameter table and the MLflow record report.
     args.device = str(resolve_device(args.device))
 
     try:

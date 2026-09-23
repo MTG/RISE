@@ -73,9 +73,6 @@ def dataset_dir(name: str) -> Path:
     return CACHE_DIR / "datasets" / name
 
 
-# --------------------------------------------------------------------------- #
-# Shared steps
-# --------------------------------------------------------------------------- #
 
 
 def prepare_contour(
@@ -209,9 +206,6 @@ def with_context(
     )
 
 
-# --------------------------------------------------------------------------- #
-# Dataset builders
-# --------------------------------------------------------------------------- #
 
 
 def build_classification_datasets(smoothing_factor: float, interpolation_gap: float) -> None:

@@ -35,9 +35,6 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def run(args: argparse.Namespace) -> None:
-    # The builders run in a fixed order because the two that sample from the beat
-    # grid draw from the same seeded generator; reordering them would change which
-    # segments each one gets.
     build_classification_datasets(args.smoothing_factor, args.interpolation_gap)
     build_clustering_dataset(args.smoothing_factor, args.interpolation_gap)
     build_pattern_recognition_dataset(args.smoothing_factor, args.interpolation_gap)

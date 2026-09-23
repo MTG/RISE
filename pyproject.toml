@@ -34,7 +34,6 @@ dependencies = [
     "info-nce-pytorch>=0.1.4",
     "librosa>=0.10",
     "matplotlib>=3.8",
-    "mlflow>=2.0",
     "numpy>=1.26",
     "pandas>=2.0",
     "peft>=0.14",
@@ -45,13 +44,9 @@ dependencies = [
     "torch>=2.0",
     "torchmetrics>=1.6",
     "tsaug>=0.2",
+    "umap-learn>=0.5",
+    "yt-dlp>=2024.1",
 ]
-
-[project.optional-dependencies]
-# Only needed for the two-dimensional projection in the clustering figure.
-viz = ["umap-learn>=0.5"]
-# Only needed to fetch the fallback audio for the beat-grid figure.
-audio = ["yt-dlp>=2024.1"]
 
 [project.urls]
 Repository = "https://github.com/MTG/RISE"

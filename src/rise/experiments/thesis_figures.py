@@ -134,8 +134,6 @@ def pitch_track_figure(args: argparse.Namespace) -> None:
     ]
 
     highlight = SVARA_DISPLAY_NAMES[args.svara]
-    # Selected by midpoint so that the svaras straddling either end of the window
-    # fall outside it, rather than half a svara hanging off the edge of the figure.
     excerpt = [event for event in events if args.start <= (event[0] + event[1]) / 2 <= args.end]
     if not excerpt:
         warn(f"No annotated svaras between {args.start}s and {args.end}s in {args.raga}/{args.performer}")
@@ -161,10 +159,6 @@ def pitch_track_figure(args: argparse.Namespace) -> None:
 
 def svara_variants_figure(args: argparse.Namespace) -> None:
     """Predominant pitch curves for several variants of one svara."""
-    # One rendition per performer, and among each performer's the one that moves
-    # furthest in pitch without exceeding MAX_RENDITION_RANGE_CENTS: the figure exists
-    # to show the variety of gamaka, and a rendition that barely leaves its
-    # svarasthana shows none of it.
     renditions: list[tuple[np.ndarray, np.ndarray]] = []
 
     for performer in varnam_performers(args.raga):
@@ -207,9 +201,6 @@ def beat_grid_figure(args: argparse.Namespace) -> None:
         waveform, sample_rate = librosa.load(audio, sr=None, mono=True)
         beat_times, beat_positions = read_beats(CMR.beat_dir / f"{BEAT_GRID_RECORDING}.tsv")
     else:
-        # A beat annotation belongs to the master it was tapped against. Laid over any
-        # other performance of the same piece it marks silence, so the fallback audio
-        # is given the grid that is actually in it rather than one borrowed from CMR.
         waveform, sample_rate = librosa.load(cached_audio(args.youtube), sr=None, mono=True)
         beat_times, beat_positions = tracked_beats(waveform, sample_rate)
 

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 
-import mlflow
 import pandas as pd
 import torch
 
@@ -31,7 +30,6 @@ DESCRIPTION = "Retrieve melodic patterns by cosine similarity of encoder embeddi
 
 RESULTS_FILE = "pattern_retrieval.tsv"
 
-
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--depth", type=int, default=5)
     parser.add_argument("--embed-dim", type=int, default=48)
@@ -49,35 +47,29 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
         help="phrases to search over; nothing is trained here, so the default is every phrase",
     )
 
-
 def run(args: argparse.Namespace) -> None:
     rule("Melodic pattern recognition")
     parameters_table(experiment_parameters(args))
     device = resolve_device(args.device)
 
-    with mlflow.start_run(run_name="pattern_recognition"):
-        mlflow.log_params(experiment_parameters(args))
+    sequences, phrase_ids = load_phrases(args.split)
+    detail(f"{len(sequences)} phrases across {len(set(phrase_ids.tolist()))} phrase identifiers")
 
-        sequences, phrase_ids = load_phrases(args.split)
-        detail(f"{len(sequences)} phrases across {len(set(phrase_ids.tolist()))} phrase identifiers")
+    model = SvaraEmbedder(args.embed_dim, args.depth).to(device)
+    model.encoder.load_state_dict(torch.load(ENCODER_CHECKPOINT, map_location=device))
 
-        model = SvaraEmbedder(args.embed_dim, args.depth).to(device)
-        model.encoder.load_state_dict(torch.load(ENCODER_CHECKPOINT, map_location=device))
+    similarity = similarity_matrix(model, sequences, args.window_size, args.batch_size)
+    scores = retrieval_scores(similarity, phrase_ids)
 
-        similarity = similarity_matrix(model, sequences, args.window_size, args.batch_size)
-        scores = retrieval_scores(similarity, phrase_ids)
+    report(scores)
 
-        mlflow.log_metrics(scores.as_row())
-        report(scores)
-
-        figure = plot_grouped_distributions(
-            average_precision_per_query(similarity, phrase_ids),
-            phrase_ids.tolist(),
-            xlabel="Phrase ID",
-            ylabel="MAP",
-        )
-        save_figure(figure, "pattern_average_precision")
-
+    figure = plot_grouped_distributions(
+        average_precision_per_query(similarity, phrase_ids),
+        phrase_ids.tolist(),
+        xlabel="Phrase ID",
+        ylabel="MAP",
+    )
+    save_figure(figure, "pattern_average_precision")
 
 def load_phrases(split: str) -> tuple[torch.Tensor, torch.Tensor]:
     """Load the phrases to search over.
@@ -93,7 +85,6 @@ def load_phrases(split: str) -> tuple[torch.Tensor, torch.Tensor]:
         torch.cat([part["sequences"] for part in parts]),
         torch.cat([part["ids"] for part in parts]),
     )
-
 
 @torch.no_grad()
 def similarity_matrix(
@@ -127,14 +118,12 @@ def similarity_matrix(
     embedded = torch.cat(embeddings).reshape(num_phrases, num_windows, -1)
     return torch.einsum("iwd,jwd->ij", embedded, embedded) / num_windows
 
-
 def split_into_windows(sequences: torch.Tensor, window_size: int) -> torch.Tensor:
     """Cut every padded phrase into the same number of equal, non-overlapping windows."""
     length = sequences.shape[1]
     num_windows = max(length // window_size, 1)
     stride = length // num_windows
     return torch.stack([sequences[:, index * stride : (index + 1) * stride] for index in range(num_windows)], dim=1)
-
 
 def report(scores) -> None:
     ensure_dir(RESULTS_DIR)

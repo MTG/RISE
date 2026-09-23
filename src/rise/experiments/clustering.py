@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 
-import mlflow
 import numpy as np
 import pandas as pd
 import torch
@@ -24,7 +23,6 @@ from ..data.datasets import ContextualSvaraDataset
 from ..data.preprocessing import dataset_dir
 from ..data.splits import load_split
 from ..evaluation import normalised_mutual_information
-from ..figures.plots import plot_embedding_projections
 from ..figures.style import save_figure
 from ..nn.lora import DEFAULT_ALPHA, DEFAULT_DROPOUT
 from ..nn.models import ContextualSvaraClassifier
@@ -42,7 +40,6 @@ LORA_RANK = 4
 
 CONDITIONS = {"scratch": "Fully supervised", "pretrained": "Semi-supervised"}
 
-
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--depth", type=int, default=5)
@@ -55,8 +52,6 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--lora-rank", type=int, default=LORA_RANK)
     parser.add_argument("--lora-alpha", type=int, default=DEFAULT_ALPHA)
     parser.add_argument("--lora-dropout", type=float, default=DEFAULT_DROPOUT)
-    parser.add_argument("--projection", action="store_true", help="also draw the UMAP projection figure")
-
 
 def run(args: argparse.Namespace) -> None:
     rule("Svara-form clustering")
@@ -78,22 +73,17 @@ def run(args: argparse.Namespace) -> None:
         f"across {num_classes} svara-forms, disjoint between the two"
     )
 
-    with mlflow.start_run(run_name="clustering"):
-        mlflow.log_params(experiment_parameters(args))
+    results, panels = {}, []
+    for tag, condition in CONDITIONS.items():
+        banner(condition)
+        embeddings = fit_and_embed(loaders, num_classes, args, device, tag=tag)
+        clusters = HDBSCAN().fit_predict(embeddings)
+        results[tag] = float(normalised_mutual_information(truth, clusters))
+        detail(f"NMI {results[tag]:.4f} over {len(set(clusters)) - (-1 in clusters)} clusters")
+        panels.append((condition, embeddings, clusters))
 
-        results, panels = {}, []
-        for tag, condition in CONDITIONS.items():
-            banner(condition)
-            embeddings = fit_and_embed(loaders, num_classes, args, device, tag=tag)
-            clusters = HDBSCAN().fit_predict(embeddings)
-            results[tag] = float(normalised_mutual_information(truth, clusters))
-            detail(f"NMI {results[tag]:.4f} over {len(set(clusters)) - (-1 in clusters)} clusters")
-            panels.append((condition, embeddings, clusters))
-
-        report(results)
-        if args.projection:
-            draw_projection(panels, truth)
-
+    report(results)
+    draw_projection(panels, truth)
 
 def fit_and_embed(
     loaders: dict[str, DataLoader],
@@ -126,7 +116,6 @@ def fit_and_embed(
     load_checkpoint(model, best_weights_path(run_tag))
     return encode(model, loaders["test"])
 
-
 def report(results: dict[str, float]) -> None:
     ensure_dir(RESULTS_DIR)
     difference = results["pretrained"] - results["scratch"]
@@ -145,34 +134,18 @@ def report(results: dict[str, float]) -> None:
         ["Condition", "NMI"],
         [(CONDITIONS[tag], f"{value:.4f}") for tag, value in results.items()] + [("Δ", f"{difference:+.4f}")],
     )
-    mlflow.log_metrics({f"nmi_{tag}": value for tag, value in results.items()})
-
 
 def draw_projection(panels: list[tuple[str, np.ndarray, np.ndarray]], truth: np.ndarray) -> None:
-    """Project both embedding spaces to two dimensions, predicted beside annotated.
-
-    The grid is the one the caption describes: one row per model, predicted clusters
-    on the left and the ground-truth annotations on the right. UMAP is used only to
-    look at the space — the NMI reported above is computed on the full-dimensional
-    embeddings, so no result depends on this projection.
-    """
+    """Project both embedding spaces to two dimensions, one plot per condition."""
     try:
         from umap import UMAP
     except ImportError:
         detail("umap-learn is not installed; skipping the projection figure")
         return
 
-    projections, labels, rows = [], [], []
+    from ..figures.plots import plot_single_projection
+
     for condition, embeddings, clusters in panels:
         projection = UMAP(random_state=DEFAULT_SEED).fit_transform(embeddings)
-        projections.append([projection, projection])
-        labels.append([clusters, truth])
-        rows.append(f"{condition} model")
-
-    figure = plot_embedding_projections(
-        projections,
-        labels,
-        row_labels=rows,
-        column_labels=["Predicted clusters", "Ground truth"],
-    )
-    save_figure(figure, "clustering_umap")
+        save_figure(plot_single_projection(projection, clusters), f"clustering_umap_{condition}_clusters")
+        save_figure(plot_single_projection(projection, truth), f"clustering_umap_{condition}_truth")

@@ -17,9 +17,6 @@ import numpy.typing as npt
 import torch
 
 with warnings.catch_warnings():
-    # tsaug reaches for the deprecated ``scipy.ndimage.filters`` alias at import
-    # time. The alias still resolves and the fix belongs upstream, so keep the
-    # deprecation out of the experiment log rather than pin an older SciPy.
     warnings.filterwarnings("ignore", message=r".*scipy\.ndimage\.filters.*")
     from tsaug import Drift, TimeWarp
 

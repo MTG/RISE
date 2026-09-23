@@ -1,19 +1,8 @@
-# Default arguments for each experiment. Keys mirror the command line options of
-# the sub-command they sit under, so anything here can be overridden with a flag:
-#
-#     ./run.sh classification --epochs 50 --lr 5e-4
-#
-# The values below are the ones the published results were produced with.
-
 preprocess:
-  # Residual budget of the peak-preserving smoothing spline.
   smoothing_factor: 0.5
-  # Longest run of unvoiced frames interpolated across.
   interpolation_gap: 0.02
 
 pretrain:
-  # Batch size sets the number of negatives per anchor, so larger is a harder,
-  # more informative contrastive task.
   batch_size: 256
   depth: 5
   embed_dim: 48
@@ -23,7 +12,7 @@ pretrain:
   patience: 20
 
 classification:
-  batch_size: 64
+  batch_size: 256
   depth: 5
   embed_dim: 48
   epochs: 200
@@ -36,7 +25,7 @@ classification:
   lora_dropout: 0.05
 
 clustering:
-  batch_size: 64
+  batch_size: 256
   depth: 5
   embed_dim: 48
   epochs: 200
@@ -44,8 +33,6 @@ clustering:
   weight_decay: 1.0e-3
   head_warmup_epochs: 10
   patience: 30
-  # A lower rank than for classification: there are far fewer annotations per
-  # svara-form to estimate the low-rank update from.
   lora_rank: 4
   lora_alpha: 16
   lora_dropout: 0.0
@@ -53,7 +40,6 @@ clustering:
 pattern_recognition:
   depth: 5
   embed_dim: 48
-  # About one svara at the 10 ms hop of the pitch tracks.
   window_size: 200
   batch_size: 256
 
