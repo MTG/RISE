@@ -34,7 +34,7 @@ pip install -e .
 
 > We pretrain an InceptionTime encoder using the InfoNCE loss on unannotated pitch contours from the CMR dataset. Positive pairs are created by applying data augmentations such as time warping and pitch drifting.
 
-<img src="images/simclr.png" alt="simclr" width="500">
+![](imgs/pretrain.png)
 
 3. Fine-tune the pretrained model on annotated [Carnatic Varnam](https://doi.org/10.5281/zenodo.1257117) dataset using LoRA and report F1 score:
 
@@ -44,7 +44,7 @@ pip install -e .
 
 > We finetune the pretrained model on annotated data using cross-entropy loss for svara classification. Low-rank adaptation (LoRA) is used for efficient fine-tuning. we report F1 score for baseline and fine-tuned models.
 
-<img src="images/lora.png" alt="simclr" width="500">
+![](imgs/classification.png)
 
 4. Cluster svara embeddings on the Carnatic Varnam dataset using HDBSCAN and report Normalized Mutual Information (NMI):
 
@@ -62,6 +62,8 @@ pip install -e .
 
 > We split each phrase into svara-length windows, embed every window with the pretrained encoder, and compare phrases by the cosine similarity of their corresponding windows. Retrieval is scored with Mean Average Precision (MAP), Mean Reciprocal Rank (MRR) and Precision@k.
 
+![](imgs/pattern-recognition.png)
+
 6. Synthesise svara contours from the learned embeddings and report reconstruction error:
 
 ```bash
@@ -69,3 +71,5 @@ pip install -e .
 ```
 
 > We attach a transposed-convolutional decoder to the frozen pretrained encoder and train it to reconstruct the original pitch time series. Reconstruction is scored by DTW distance, periodicity error and pitch position error, measured in cents.
+
+![](imgs/synthesis.png)
