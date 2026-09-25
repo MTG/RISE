@@ -23,12 +23,6 @@ keywords = [
     "contrastive learning",
     "music information retrieval",
 ]
-classifiers = [
-    "Intended Audience :: Science/Research",
-    "Programming Language :: Python :: 3",
-    "Topic :: Multimedia :: Sound/Audio :: Analysis",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
-]
 
 dependencies = [
     "info-nce-pytorch>=0.1.4",
@@ -57,15 +51,3 @@ rise = "rise.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.ruff]
-line-length = 110
-target-version = "py310"
-src = ["src"]
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
-ignore = ["E501"]
-
-[tool.ruff.lint.isort]
-known-first-party = ["rise"]
